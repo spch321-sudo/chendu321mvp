@@ -475,6 +475,12 @@
   .mk-note-in{overflow:hidden;min-height:0;font-size:13.5px;color:var(--inkSoft,#3a4a44);background:var(--mintWash);border-left:3px solid var(--gold,#C9A227);border-radius:9px;line-height:1.7;padding:0 12px;}
   .mk-note.open .mk-note-in{padding:8px 12px;}
   .mk-note b{color:var(--mintDeep);font-weight:700;}
+
+  /* 問小智（畫線筆記 → AI） */
+  .mk-ask{display:inline-flex;align-items:center;gap:4px;margin-top:8px;background:var(--mintWash);border:1px solid var(--mint);color:var(--mintDark);border-radius:16px;padding:6px 13px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;}
+  .mk-ask:active{background:var(--mint);color:#fff;}
+  .sheet-ask{flex:0 0 auto;border:1.5px solid var(--mintDeep);border-radius:13px;padding:13px 15px;font-size:14.5px;font-weight:700;color:var(--mintDeep);background:var(--mintWash);cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;white-space:nowrap;}
+  .sheet-ask:active{background:var(--mintDeep);color:#fff;}
   .sheet-mask{position:fixed;inset:0;background:rgba(20,32,28,.42);z-index:60;}
   .sheet-card{position:fixed;left:0;right:0;bottom:0;z-index:61;background:#fff;border-radius:20px 20px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 36px rgba(0,0,0,.18);max-width:620px;margin:0 auto;animation:sheetUp .22s ease;}
   @keyframes sheetUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
@@ -1233,7 +1239,7 @@ function mkInline(l,paraId,raw){
       var nk=l.n+":"+key;
       var nopen=!!(state.noteOpen&&state.noteOpen[nk]);
       body+='<span class="mk-flag'+(nopen?' on':'')+'" id="mkflag-'+nk+'" onclick="toggleNote(&#39;'+nk+'&#39;)" role="button" aria-label="領受筆記">'+(nopen?'▼':'▶')+'</span>';
-      notes+='<div class="mk-note'+(nopen?' open':'')+'" id="mknote-'+nk+'"><div class="mk-note-in"><b>領受：</b>'+esc(note).split("\n").join("<br>")+'</div></div>';
+      notes+='<div class="mk-note'+(nopen?' open':'')+'" id="mknote-'+nk+'"><div class="mk-note-in"><b>領受：</b>'+esc(note).split("\n").join("<br>")+'<br><button class="mk-ask" onclick="mkAskXz('+l.n+',&#39;'+key+'&#39;)">✨ 問小智</button></div></div>';
     }
   }
   return {body:body, notes:notes};
@@ -1264,7 +1270,7 @@ window.mkNote=function(n,key){
     +'<div class="sheet-quote-wrap"><span class="sheet-quote">'+inline(mkSentence(l,key)).split("\n").join("<br>")+'</span></div>'
     +'<textarea id="mk-ta" class="sheet-ta" placeholder="這句話帶給你什麼領受、感動，或聖靈的提醒？寫下來，把焦點對準耶穌……">'+esc(cur)+'</textarea>'
     +'<div class="sheet-acts">'
-    +'<button class="sheet-save" onclick="mkSave('+n+',&#39;'+key+'&#39;)">儲存領受</button>'
+    +'<button class="sheet-save" onclick="mkSave('+n+',&#39;'+key+'&#39;)">儲存領受</button>'+'<button class="sheet-ask" onclick="mkAskXz('+n+',&#39;'+key+'&#39;)">✨ 問小智</button>'
     +'</div>'
     +'<div class="sheet-acts2">'
     +'<button class="sheet-clear" onclick="mkClearNote('+n+',&#39;'+key+'&#39;)">刪除領受</button>'
@@ -1282,6 +1288,32 @@ window.mkSave=function(n,key){
 window.mkRemove=function(n,key){
   if(state.marks&&state.marks[n]){ delete state.marks[n][key]; if(!Object.keys(state.marks[n]).length) delete state.marks[n]; }
   saveState(); mkSheetClose(); rerenderKeepScroll();
+};
+window.mkAskXz=function(n,key){
+  var l=mkLessonByN(n); if(!l) return;
+  var raw=mkSentence(l,key)||"";
+  var sent=String(raw).replace(/⟦[a-zA-Z]:/g,"").replace(/⟧/g,"").replace(/\s+/g," ").trim();
+  var marks=(state.marks&&state.marks[n])||{};
+  var note=String(marks[key]||"").trim();
+  var q="我正在讀第"+l.n+"課，畫了這一句：「"+sent+"」。"+(note?("我的領受是：「"+note+"」。"):"")+"請幫我更深地明白這句話對我的意思，也帶我把焦點對準耶穌。";
+  try{ mkSheetClose(); }catch(e){}
+  if(typeof chat==="undefined"||!chat||chat.busy) return;
+  chat.open=true; chat.favView=false;
+  chat.msgs.push({role:"user",text:q});
+  renderChat(); xzScrollBottom(); xzCall();
+};
+window.bookAskXz=function(n,key){
+  var u=(BOOK||[])[n]; if(!u) return;
+  var raw=bookMkSentence(u,key)||"";
+  var sent=String(raw).replace(/⟦[a-zA-Z]:/g,"").replace(/⟧/g,"").replace(/\s+/g," ").trim();
+  var marks=(state.bookMarks&&state.bookMarks[n])||{};
+  var note=String(marks[key]||"").trim();
+  var q="我正在讀第"+(u.n||n)+"課，畫了這一句：「"+sent+"」。"+(note?("我的領受是：「"+note+"」。"):"")+"請幫我更深地明白這句話對我的意思，也帶我把焦點對準耶穌。";
+  try{ mkSheetClose(); }catch(e){}
+  if(typeof chat==="undefined"||!chat||chat.busy) return;
+  chat.open=true; chat.favView=false;
+  chat.msgs.push({role:"user",text:q});
+  renderChat(); xzScrollBottom(); xzCall();
 };
 window.mkClearNote=function(n,key){
   if(state.marks&&state.marks[n]&&Object.prototype.hasOwnProperty.call(state.marks[n],key)){ state.marks[n][key]=""; }
@@ -2598,7 +2630,7 @@ function bookInlineMark(u, bi, raw){
       var nk = "b"+u.n+":"+key;
       var nopen = !!(state.noteOpen && state.noteOpen[nk]);
       body += '<span class="mk-flag'+(nopen?' on':'')+'" id="mkflag-'+nk+'" onclick="toggleNote(&#39;'+nk+'&#39;)" role="button" aria-label="領受筆記">'+(nopen?'▼':'▶')+'</span>';
-      notes += '<div class="mk-note'+(nopen?' open':'')+'" id="mknote-'+nk+'"><div class="mk-note-in"><b>領受：</b>'+esc(note).split("\n").join("<br>")+'</div></div>';
+      notes += '<div class="mk-note'+(nopen?' open':'')+'" id="mknote-'+nk+'"><div class="mk-note-in"><b>領受：</b>'+esc(note).split("\n").join("<br>")+'<br><button class="mk-ask" onclick="bookAskXz('+u.n+',&#39;'+key+'&#39;)">✨ 問小智</button></div></div>';
     }
   }
   return {body:body, notes:notes};
@@ -2623,7 +2655,7 @@ window.bookMkNote=function(n,key){
     +'<div class="sheet-head">✍️ 寫下你的領受</div>'
     +'<div class="sheet-quote-wrap"><span class="sheet-quote">'+bookInlineFn(bookMkSentence(u,key))+'</span></div>'
     +'<textarea id="mk-ta" class="sheet-ta" placeholder="這句話帶給你什麼領受、感動，或聖靈的提醒？寫下來，把焦點對準耶穌……">'+esc(cur)+'</textarea>'
-    +'<div class="sheet-acts"><button class="sheet-save" onclick="bookMkSave('+n+',&#39;'+key+'&#39;)">儲存領受</button></div>'
+    +'<div class="sheet-acts"><button class="sheet-save" onclick="bookMkSave('+n+',&#39;'+key+'&#39;)">儲存領受</button>'+'<button class="sheet-ask" onclick="bookAskXz('+n+',&#39;'+key+'&#39;)">✨ 問小智</button></div>'
     +'<div class="sheet-acts2">'
     +'<button class="sheet-clear" onclick="bookMkClearNote('+n+',&#39;'+key+'&#39;)">刪除領受</button>'
     +'<button class="sheet-del" onclick="bookMkRemove('+n+',&#39;'+key+'&#39;)">移除畫線</button>'
