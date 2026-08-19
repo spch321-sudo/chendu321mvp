@@ -578,6 +578,20 @@
   .bless-lbl{font-size:14px;font-weight:700;color:var(--gold);margin-bottom:4px;}
   .bless-sub{font-size:12.5px;color:var(--inkFaint);line-height:1.65;margin-bottom:13px;}
   .bless-video{width:100%;border-radius:14px;margin:6px 0 10px;background:#000;display:block;}
+  .bless-rowlbl{font-size:13px;font-weight:700;color:var(--inkSoft);text-align:left;margin:12px 2px 6px;}
+  .bless-optrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0;}
+  .chip{border:1.5px solid var(--line);background:var(--card);color:var(--inkSoft);border-radius:22px;padding:8px 15px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;}
+  .chip.on{background:var(--mintDeep);border-color:var(--mintDeep);color:#fff;}
+  .chip.file{display:inline-flex;align-items:center;}
+  .bless-pick{display:block;border:1.5px dashed var(--mint);border-radius:14px;padding:13px;font-size:14px;font-weight:700;color:var(--mintDeep);background:var(--mintSoft);cursor:pointer;text-align:center;margin:6px 0;}
+  .bless-pick:active{background:var(--mintWash);}
+  .bless-fname{font-size:13px;color:var(--inkSoft);font-weight:600;flex:1;min-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .bless-vollbl{font-size:13px;color:var(--inkFaint);}
+  .bless-hr{border:none;border-top:1px dashed var(--line);margin:14px 0;}
+  .bless-tip{font-size:12px;color:var(--inkFaint);line-height:1.6;margin-top:8px;}
+  .rec-btn.ghost2{background:var(--mintSoft);color:var(--mintDeep);border:1.5px solid var(--mint);}
+  .mt-sign{width:100%;box-sizing:border-box;border:1.5px solid var(--line);border-radius:12px;padding:11px 13px;font-size:15px;font-family:inherit;color:var(--ink);background:var(--card);margin:2px 0 6px;}
+  .mt-sign:focus{outline:none;border-color:var(--mint);}
   /* ===== 建國四方略 ===== */
   .strat-wrap{margin:2px 0 16px;}
   .strat-h{font-size:13px;font-weight:700;color:var(--mintDark);margin:0 2px 9px;letter-spacing:.3px;}
@@ -4004,6 +4018,11 @@ var MT_THEMES=[
     title:"#8A6D55", tagline:"#A99572", orn:"#C2A24B" }
 ];
 var mtState={open:false, theme:0, content:"verse", shape:"port"};
+var mtPhotoImg=null, mtPhotoMode="bg", mtSuppressSticker=false;
+var mtBgmBlob=null, mtBgmName="", mtBgmVol=0.5;
+var mtSelfie=false, mtMcLen=15;
+var mtStickerShape="square", mtSign="";
+var MC_LENS=[[15,"15秒"],[30,"30秒"],[60,"1分鐘"],[0,"整首"]];
 function mtIsInApp(){return /Line|FBAN|FBAV|FB_IAB|Instagram|MicroMessenger/i.test(navigator.userAgent||"");}
 function mtRound(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 function mtSpaced(ctx,text,cx,y,gap){
@@ -4060,6 +4079,12 @@ function mtDraw(l, ti, type, shape){
   var rg=ctx.createRadialGradient(cx,H*0.22,60,cx,H*0.22,780);
   rg.addColorStop(0,"rgba(255,255,255,.18)"); rg.addColorStop(1,"rgba(255,255,255,0)");
   ctx.fillStyle=rg; ctx.fillRect(0,0,W,H);
+  if(mtPhotoImg&&mtPhotoMode==="bg"){ try{
+    var _pw=mtPhotoImg.naturalWidth||mtPhotoImg.width,_ph=mtPhotoImg.naturalHeight||mtPhotoImg.height;
+    var _sc=Math.max(W/_pw,H/_ph),_dw=_pw*_sc,_dh=_ph*_sc;
+    ctx.drawImage(mtPhotoImg,(W-_dw)/2,(H-_dh)/2,_dw,_dh);
+    ctx.fillStyle=(ti==1)?"rgba(18,38,30,.60)":"rgba(255,255,255,.66)"; ctx.fillRect(0,0,W,H);
+  }catch(e){} }
   ctx.strokeStyle=T.frame; ctx.lineWidth=3; mtRound(ctx,48,48,W-96,H-96,30); ctx.stroke();
   ctx.textAlign="center"; ctx.textBaseline="alphabetic";
   // 抬頭
@@ -4072,10 +4097,15 @@ function mtDraw(l, ti, type, shape){
   var hasId=(MT_SITE)||(MT_QR&&mtQRImg&&mtQRImg.complete&&mtQRImg.naturalWidth);
   var topClusterTop=ruleY+(sq?40:64);
   var ornY=H-(sq?(hasId?262:206):(hasId?332:262));
+  var _hasStk=(mtPhotoImg&&mtPhotoMode==="sticker"&&!mtSuppressSticker);
+  var _leftPad=(sq?96:120), _stkLeft=W;
+  if(_hasStk){ var _wp=Math.round(W*.072), _ww2=(mtStickerShape==="wide"); var _sw2=_ww2?Math.round(W*0.40):Math.round(Math.min(W,H)*0.22); _stkLeft=W-_wp-_sw2; }
   // === 底部群組（由下往上錨定）===
   // 標語
   ctx.fillStyle=T.tagline; ctx.font='500 '+(sq?26:30)+'px '+MT_FONT;
-  mtSpaced(ctx,"活出基督 · 成為得勝者",cx,H-(sq?(hasId?92:60):(hasId?128:90)),3);
+  var _tag=(mtSign&&mtSign.trim())? mtSign.trim() : "活出基督 · 成為得勝者";
+  var _tagY=H-(sq?(hasId?92:60):(hasId?128:90));
+  if(_hasStk){ ctx.textAlign="left"; ctx.fillText(_tag,_leftPad,_tagY); ctx.textAlign="center"; } else { mtSpaced(ctx,_tag,cx,_tagY,3); }
   // 網址 / QR
   if(MT_SITE){ ctx.textAlign="center"; ctx.fillStyle=T.tagline; ctx.font='600 '+(sq?24:27)+'px '+MT_FONT; ctx.fillText(MT_SITE,cx,H-(sq?54:84)); }
   if(MT_QR&&mtQRImg&&mtQRImg.complete&&mtQRImg.naturalWidth){
@@ -4085,11 +4115,12 @@ function mtDraw(l, ti, type, shape){
   // 課別 + 標題
   var flat=(l.title||"").split("\n").join("‧");
   ctx.fillStyle=T.title; ctx.font='600 '+(sq?28:34)+'px '+MT_FONT;
-  var tl=mtWrap(ctx,"第 "+l.n+" 課 · "+flat,W-260);
+  var _tMaxW=_hasStk?Math.max(220,_stkLeft-_leftPad-28):(W-260);
+  var tl=mtWrap(ctx,"第 "+l.n+" 課 · "+flat,_tMaxW);
   var ty=ornY+(sq?46:58);
-  for(var j=0;j<Math.min(tl.length,2);j++) ctx.fillText(tl[j],cx,ty+j*(sq?38:46));
+  if(_hasStk){ ctx.textAlign="left"; for(var j=0;j<Math.min(tl.length,2);j++) ctx.fillText(tl[j],_leftPad,ty+j*(sq?38:46)); ctx.textAlign="center"; } else { for(var j=0;j<Math.min(tl.length,2);j++) ctx.fillText(tl[j],cx,ty+j*(sq?38:46)); }
   // 裝飾
-  ctx.fillStyle=T.orn; ctx.font='400 '+(sq?26:30)+'px '+MT_FONT; ctx.fillText("✦",cx,ornY);
+  ctx.fillStyle=T.orn; ctx.font='400 '+(sq?26:30)+'px '+MT_FONT; if(_hasStk){ ctx.textAlign="left"; ctx.fillText("✦",_leftPad,ornY); ctx.textAlign="center"; } else { ctx.fillText("✦",cx,ornY); }
   // === 主內容群組（置中於 header 與 ornament 之間）===
   var clusterBot=ornY-(sq?34:46);
   var labelH=0;
@@ -4118,6 +4149,18 @@ function mtDraw(l, ti, type, shape){
   if(c.sub){ y+=sq?52:66; ctx.fillStyle=T.ref; ctx.font='600 '+(sq?32:38)+'px '+MT_FONT; ctx.fillText(c.sub,cx,y); }
   if(c.reminder&&!sq){ y+=58; ctx.fillStyle=T.title; ctx.font='500 30px '+MT_FONT;
     var rl=mtWrap(ctx,c.reminder,W-300); for(var i=0;i<Math.min(rl.length,2);i++){ ctx.fillText(rl[i],cx,y+i*40); } }
+  if(mtPhotoImg&&mtPhotoMode==="sticker"&&!mtSuppressSticker){ try{
+    var F2=W/1080, pad2=Math.round(W*.072), _ww=(mtStickerShape==="wide");
+    var Sw=_ww?Math.round(W*0.40):Math.round(Math.min(W,H)*0.22);
+    var Sh=_ww?Math.round(Sw*9/16):Sw;
+    var x2=W-pad2-Sw, y2=H-pad2-Sh-(sq?Math.round(H*0.055):Math.round(H*0.08));
+    ctx.save(); ctx.shadowColor="rgba(0,0,0,.22)"; ctx.shadowBlur=Math.round(18*F2); ctx.shadowOffsetY=Math.round(6*F2);
+    mtRound(ctx,x2,y2,Sw,Sh,Math.round(24*F2)); ctx.fillStyle="#fff"; ctx.fill(); ctx.restore();
+    ctx.save(); mtRound(ctx,x2+6,y2+6,Sw-12,Sh-12,Math.round(18*F2)); ctx.clip();
+    var _pw3=mtPhotoImg.naturalWidth||mtPhotoImg.width,_ph3=mtPhotoImg.naturalHeight||mtPhotoImg.height;
+    var _sc3=Math.max((Sw-12)/_pw3,(Sh-12)/_ph3),_dw3=_pw3*_sc3,_dh3=_ph3*_sc3;
+    ctx.drawImage(mtPhotoImg,x2+6+((Sw-12)-_dw3)/2,y2+6+((Sh-12)-_dh3)/2,_dw3,_dh3); ctx.restore();
+  }catch(e){} }
   return cv.toDataURL("image/png");
 }
 function renderMeitu(){
@@ -4138,6 +4181,7 @@ function renderMeitu(){
     +'<div class="mt-body">'
     +'<div class="mt-imgwrap"><img id="mt-img" class="mt-img" alt="正在產生美圖…"></div>'
     +contentRow+themeRow+shapeRow
+    +'<div class="mt-rowlbl">署名</div><input class="mt-sign" type="text" maxlength="24" placeholder="留空顯示「活出基督 · 成為得勝者」" value="'+esc(mtSign)+'" oninput="mtSetSign(this.value)">'
     +'<div class="mt-hint">💡 <b>長按上方圖片</b>，選「儲存圖片」即可存到相簿，再分享到 LINE、Facebook 或限時動態。'+(inApp?'<br>在 LINE／FB 內，長按儲存最穩定。':'')+'</div>'
     +'<div class="mt-actions">'
     +'<button class="mt-btn mt-btn-save" onclick="meituShare()">📥 儲存／分享</button>'
@@ -4293,12 +4337,56 @@ function blessMime(){
 }
 function blessSkeleton(n){
   if(!blessSupported()){
-    return '<div class="bless-sec"><div class="bless-lbl">🎁 祝福語音影片</div>'
-      +'<div class="rec-note">把上方美圖配上你親口的祝福，合成一段可分享的短影片，送給家人朋友。此功能需用 <b>Safari／Chrome</b> 開啟並允許麥克風（網路版 https 最穩定）；LINE／FB 內建瀏覽器或本機檔案會被封鎖。</div></div>';
+    return '<div class="bless-sec"><div class="bless-lbl">🎬 心意短影片</div>'
+      +'<div class="rec-note">把上方美圖配上你親口的祝福或詩歌，合成一段可分享的短影片。此功能需用 <b>Safari／Chrome</b> 開啟並允許麥克風（網路版 https 最穩定）；LINE／FB 內建瀏覽器或本機檔案會被封鎖。</div></div>';
   }
-  return '<div class="bless-sec"><div class="bless-lbl">🎁 配上祝福語音，做成短影片</div>'
-    +'<div class="bless-sub">為某位家人或朋友，把這張美圖加上你親口的祝福，做成一段可以分享的短影片。</div>'
-    +'<button class="rec-btn" onclick="blessStart('+n+')">🎙️ 開始錄製祝福影片</button></div>';
+  var sel=mtSelfie;
+  var h2='<div class="bless-sec">';
+  h2+='<div class="bless-lbl">🎬 配上心意，做成短影片</div>';
+  h2+='<div class="bless-sub">把這張美圖加上你親口的祝福或詩歌，做成一段可分享的短影片，送給家人朋友。</div>';
+  /* 相片 */
+  h2+='<div class="bless-rowlbl">🖼️ 相片（選用）</div>';
+  if(mtPhotoImg){
+    h2+='<div class="bless-optrow"><button class="chip '+(mtPhotoMode==="bg"?"on":"")+'" onclick="mtSetPhotoMode(\'bg\')">作背景</button>'
+      +'<button class="chip '+(mtPhotoMode==="sticker"?"on":"")+'" onclick="mtSetPhotoMode(\'sticker\')">貼在卡片上</button>'
+      +'<label class="chip file">換一張<input type="file" onchange="mtPickPhoto(this)" hidden></label>'
+      +'<button class="chip" onclick="mtRemovePhoto()">移除</button></div>';
+    if(mtPhotoMode==="sticker") h2+='<div class="bless-optrow"><span class="bless-vollbl">形狀</span><button class="chip '+(mtStickerShape==="square"?"on":"")+'" onclick="mtSetStkShape(\'square\')">方形</button><button class="chip '+(mtStickerShape==="wide"?"on":"")+'" onclick="mtSetStkShape(\'wide\')">橫式 16:9</button></div>';
+  }else{
+    h2+='<label class="bless-pick">＋ 從相簿選一張相片<input type="file" onchange="mtPickPhoto(this)" hidden></label>';
+  }
+  /* 背景音樂 */
+  h2+='<div class="bless-rowlbl">🎵 背景音樂（選用）</div>';
+  if(mtBgmBlob){
+    h2+='<div class="bless-optrow"><span class="bless-fname">♪ '+esc(mtBgmName||"已選音樂")+'</span>'
+      +'<label class="chip file">換一首<input type="file" onchange="mtPickBgm(this)" hidden></label>'
+      +'<button class="chip" onclick="mtRemoveBgm()">移除</button></div>'
+      +'<div class="bless-optrow"><span class="bless-vollbl">音量</span>'
+      +'<button class="chip '+(mtBgmVol<=0.35?"on":"")+'" onclick="mtSetBgmVol(0.3)">小聲</button>'
+      +'<button class="chip '+(mtBgmVol>0.35&&mtBgmVol<0.75?"on":"")+'" onclick="mtSetBgmVol(0.5)">適中</button>'
+      +'<button class="chip '+(mtBgmVol>=0.75?"on":"")+'" onclick="mtSetBgmVol(0.9)">明顯</button></div>';
+  }else{
+    h2+='<label class="bless-pick">＋ 選一首詩歌／輕音樂<input type="file" onchange="mtPickBgm(this)" hidden></label>';
+    h2+='<div class="bless-tip">找不到音檔？在選擇視窗按左下「瀏覽」，到 iCloud 雲碟或「我的 iPhone」裡找。</div>';
+  }
+  /* 錄製方式 */
+  h2+='<hr class="bless-hr"><div class="bless-rowlbl">錄製方式</div>';
+  h2+='<div class="bless-optrow" style="justify-content:center">'
+    +'<button class="chip '+(!sel?"on":"")+'" onclick="mtSetSelfie(false)">只有聲音</button>'
+    +'<button class="chip '+(sel?"on":"")+'" onclick="mtSetSelfie(true)">📷 自拍畫面</button></div>';
+  if(sel) h2+='<div class="bless-tip">按下開始後會開啟前鏡頭，你的臉會以圓形貼在卡片右下角，錄影時同步合成。</div>';
+  h2+='<button class="rec-btn" onclick="blessStart('+n+')">🎙️ '+(sel?"開始自拍錄影":"開始錄製祝福影片")+'</button>';
+  h2+='<div class="bless-tip">建議 30～60 秒：先問候，再讀經文，最後說一句祝福。</div>';
+  /* 純音樂卡片 */
+  if(mtBgmBlob){
+    h2+='<hr class="bless-hr"><div class="bless-rowlbl">🎵 不開口，做成純音樂卡片</div>';
+    h2+='<div class="bless-optrow" style="justify-content:center">'
+      +MC_LENS.map(function(x){return '<button class="chip '+(mtMcLen===x[0]?"on":"")+'" onclick="mtSetMcLen('+x[0]+')">'+x[1]+'</button>';}).join("")+'</div>';
+    h2+='<button class="rec-btn ghost2" onclick="mtMusicRec('+n+')">🎵 只配音樂，做成影片</button>';
+    h2+='<div class="bless-tip">卡片配上背景音樂做成影片，不需要開口。選 15 或 30 秒一下就好；「整首」則等音樂播完。</div>';
+  }
+  h2+='</div>';
+  return h2;
 }
 function blessShowRecording(n){
   var s=document.getElementById("bless-slot"); if(!s)return;
@@ -4338,46 +4426,79 @@ function blessTimerStart(){ blessTimerStop(); blessState.t0=Date.now(); blessSta
 function blessTimerStop(){ if(blessState.timer){ clearInterval(blessState.timer); blessState.timer=null; } }
 function blessCleanup(){
   try{ if(blessState.mr&&blessState.mr.state==="recording"){ blessState.mr.onstop=null; blessState.mr.stop(); } }catch(e){}
-  blessStopTracks(); blessTimerStop(); blessState.mr=null;
+  blessStopTracks(); try{blessStopSelfie();blessCleanupAudio();}catch(e){} blessTimerStop(); blessState.mr=null;
   if(blessState.url){ try{URL.revokeObjectURL(blessState.url);}catch(e){} blessState.url=null; } blessState.blob=null;
 }
 window.blessStart=function(n){
   if(!blessSupported()){ blessShowError(n,{name:"Unsupported"}); return; }
   blessCleanup();
   var l=state.lesson; if(!l) return;
+  var wantSelfie=mtSelfie;
+  mtSuppressSticker=wantSelfie;
   var dataUrl;
-  try{ dataUrl=mtDraw(l,mtState.theme,mtState.content,mtState.shape); }catch(e){ blessShowError(n,e); return; }
+  try{ dataUrl=mtDraw(l,mtState.theme,mtState.content,mtState.shape); }catch(e){ mtSuppressSticker=false; blessShowError(n,e); return; }
+  mtSuppressSticker=false;
   var img=new Image();
   img.onload=function(){
-    try{
-      var W=img.naturalWidth||1080, H=img.naturalHeight||1440;
-      var cv=document.createElement("canvas"); cv.width=W; cv.height=H; var cxt=cv.getContext("2d");
-      blessState.t0=Date.now();
-      function frame(){
-        cxt.drawImage(img,0,0,W,H);
-        var t=(Date.now()-blessState.t0)/1000, a=0.3+0.4*(0.5+0.5*Math.sin(t*3));
-        cxt.save(); cxt.globalAlpha=a; cxt.fillStyle="#D14B4B"; cxt.beginPath(); cxt.arc(78,H-78,17,0,Math.PI*2); cxt.fill(); cxt.restore();
-        blessState.raf=requestAnimationFrame(frame);
-      }
-      frame();
-      var vstream=cv.captureStream(20); blessState.vstream=vstream;
-      navigator.mediaDevices.getUserMedia({audio:true}).then(function(astream){
-        blessState.astream=astream;
-        var tracks=vstream.getVideoTracks().concat(astream.getAudioTracks());
-        var combined=new MediaStream(tracks);
-        var mime=blessMime(), mr;
-        try{ mr=mime? new MediaRecorder(combined,{mimeType:mime}) : new MediaRecorder(combined); }catch(e){ mr=new MediaRecorder(combined); }
-        blessState.mr=mr; blessState.chunks=[];
-        mr.ondataavailable=function(e){ if(e.data&&e.data.size) blessState.chunks.push(e.data); };
-        mr.onstop=function(){
-          var type=(blessState.chunks[0]&&blessState.chunks[0].type)||mime||"video/webm";
-          var blob=new Blob(blessState.chunks,{type:type});
-          blessStopTracks(); blessTimerStop();
-          blessShow(n,blob);
-        };
-        mr.start(); blessTimerStart(); blessShowRecording(n);
-      }).catch(function(err){ blessStopTracks(); blessShowError(n,err); });
-    }catch(e){ blessStopTracks(); blessShowError(n,e); }
+    var W=img.naturalWidth||1080, H=img.naturalHeight||1440, F=W/1080;
+    var startPipeline=function(selfieVid){
+      try{
+        var cv=document.createElement("canvas"); cv.width=W; cv.height=H; var cxt=cv.getContext("2d");
+        blessState.t0=Date.now();
+        function frame(){
+          cxt.drawImage(img,0,0,W,H);
+          var t=(Date.now()-blessState.t0)/1000;
+          var gx=W*(0.12+0.76*(((t/16)%2>1)?2-(t/16)%2:(t/16)%2));
+          var rg=cxt.createRadialGradient(gx,H*.12,10,gx,H*.12,W*.55);
+          rg.addColorStop(0,"rgba(255,255,255,.10)"); rg.addColorStop(1,"rgba(255,255,255,0)");
+          cxt.fillStyle=rg; cxt.fillRect(0,0,W,H);
+          if(selfieVid&&selfieVid.videoWidth) mtDrawSelfie(cxt,selfieVid,W,H,F);
+          blessState.raf=requestAnimationFrame(frame);
+        }
+        frame();
+        var vstream=cv.captureStream(24); blessState.vstream=vstream;
+        navigator.mediaDevices.getUserMedia({audio:true}).then(function(mic){
+          blessState.astream=mic;
+          var audioStream=mic, ac=null, bgmEl=null, bgmURL=null;
+          if(mtBgmBlob){
+            try{
+              ac=new (window.AudioContext||window.webkitAudioContext)();
+              var micSrc=ac.createMediaStreamSource(mic);
+              bgmURL=URL.createObjectURL(mtBgmBlob);
+              bgmEl=new Audio(); bgmEl.src=bgmURL; bgmEl.loop=true; bgmEl.crossOrigin="anonymous";
+              var bgmSrc=ac.createMediaElementSource(bgmEl);
+              var gain=ac.createGain(); gain.gain.value=mtBgmVol;
+              var dst=ac.createMediaStreamDestination();
+              micSrc.connect(dst); bgmSrc.connect(gain).connect(dst);
+              audioStream=dst.stream; bgmEl.play().catch(function(){});
+            }catch(e){ audioStream=mic; ac=null; bgmEl=null; }
+          }
+          blessState._ac=ac; blessState._bgmEl=bgmEl; blessState._bgmURL=bgmURL;
+          var tracks=vstream.getVideoTracks().concat(audioStream.getAudioTracks());
+          var combined=new MediaStream(tracks);
+          var mime=blessMime(), mr;
+          try{ mr=mime? new MediaRecorder(combined,{mimeType:mime,videoBitsPerSecond:2500000}) : new MediaRecorder(combined); }catch(e){ mr=new MediaRecorder(combined); }
+          blessState.mr=mr; blessState.chunks=[];
+          mr.ondataavailable=function(e){ if(e.data&&e.data.size) blessState.chunks.push(e.data); };
+          mr.onstop=function(){
+            var type=(blessState.chunks[0]&&blessState.chunks[0].type)||mime||"video/webm";
+            var blob=new Blob(blessState.chunks,{type:type});
+            blessCleanupAudio(); blessStopTracks(); blessStopSelfie(); blessTimerStop();
+            blessShow(n,blob);
+          };
+          mr.start(); blessTimerStart(); blessShowRecording(n);
+        }).catch(function(err){ blessStopTracks(); blessStopSelfie(); blessShowError(n,err); });
+      }catch(e){ blessStopTracks(); blessStopSelfie(); blessShowError(n,e); }
+    };
+    if(wantSelfie){
+      navigator.mediaDevices.getUserMedia({video:{facingMode:"user",width:{ideal:720},height:{ideal:720}},audio:false}).then(function(cam){
+        blessState.selfieStream=cam;
+        var sv=document.createElement("video"); sv.playsInline=true; sv.muted=true; sv.autoplay=true;
+        sv.setAttribute("playsinline",""); sv.setAttribute("muted",""); sv.srcObject=cam;
+        blessState.selfieVid=sv; var pl=sv.play(); if(pl&&pl.catch)pl.catch(function(){});
+        setTimeout(function(){ startPipeline(sv); },400);
+      }).catch(function(){ mtSelfie=false; startPipeline(null); });
+    }else startPipeline(null);
   };
   img.onerror=function(){ blessShowError(n,{name:"img"}); };
   img.src=dataUrl;
@@ -4393,6 +4514,105 @@ window.blessShare=async function(){
     if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:"晨讀321 · 祝福"}); return; }
   }catch(e){}
   try{ var a=document.createElement("a"); a.href=blessState.url; a.download=fname; document.body.appendChild(a); a.click(); a.remove(); }catch(e){}
+};
+
+/* ===== 美圖錄製升級：自拍 / 背景音樂 / 純音樂卡片 / 相片 ===== */
+function blessStopSelfie(){
+  try{ if(blessState.selfieStream) blessState.selfieStream.getTracks().forEach(function(t){t.stop();}); }catch(e){}
+  blessState.selfieStream=null; blessState.selfieVid=null;
+}
+function blessCleanupAudio(){
+  try{ if(blessState._bgmEl){ blessState._bgmEl.pause(); blessState._bgmEl.src=""; } }catch(e){}
+  try{ if(blessState._bgmURL) URL.revokeObjectURL(blessState._bgmURL); }catch(e){}
+  try{ if(blessState._ac) blessState._ac.close(); }catch(e){}
+  blessState._bgmEl=null; blessState._bgmURL=null; blessState._ac=null; blessState._mcGain=null;
+}
+function mtDrawSelfie(cx,vid,W,H,F){
+  if(!vid||!vid.videoWidth) return;
+  var pad=Math.round(W*.078), R=Math.round(Math.min(W,H)*0.115);
+  var cxx=W-pad-R+Math.round(4*F), cyy=H-pad-R+Math.round(4*F);
+  cx.save(); cx.shadowColor="rgba(0,0,0,.28)"; cx.shadowBlur=Math.round(22*F); cx.shadowOffsetY=Math.round(8*F);
+  cx.beginPath(); cx.arc(cxx,cyy,R,0,7); cx.fillStyle="#000"; cx.fill(); cx.restore();
+  cx.save(); cx.beginPath(); cx.arc(cxx,cyy,R,0,7); cx.clip();
+  var vw=vid.videoWidth, vh=vid.videoHeight, side=Math.min(vw,vh), sx=(vw-side)/2, sy=(vh-side)/2;
+  cx.translate(cxx,cyy); cx.scale(-1,1); cx.drawImage(vid,sx,sy,side,side,-R,-R,R*2,R*2); cx.restore();
+  cx.beginPath(); cx.arc(cxx,cyy,R,0,7); cx.lineWidth=Math.max(3,W*.006); cx.strokeStyle="#F4EFE3"; cx.stroke();
+  cx.beginPath(); cx.arc(cxx,cyy,R+Math.round(4*F),0,7); cx.lineWidth=Math.max(2,W*.003); cx.strokeStyle="rgba(184,122,34,.85)"; cx.stroke();
+}
+window.mtPickPhoto=function(input){
+  var f=input&&input.files&&input.files[0]; if(!f) return;
+  if(!/^image\//.test(f.type)){ alert("請選一張相片"); return; }
+  var rd=new FileReader();
+  rd.onload=function(){ var im=new Image(); im.onload=function(){ mtPhotoImg=im; renderMeitu(); };
+    im.onerror=function(){ alert("這張相片讀取失敗，換一張試試"); }; im.src=rd.result; };
+  rd.onerror=function(){ alert("讀取相片失敗"); }; rd.readAsDataURL(f);
+};
+window.mtSetPhotoMode=function(m){ mtPhotoMode=m; renderMeitu(); };
+window.mtRemovePhoto=function(){ mtPhotoImg=null; renderMeitu(); };
+window.mtPickBgm=function(input){
+  var f=input&&input.files&&input.files[0]; if(!f) return;
+  if(!/^audio\//.test(f.type)&&!/\.(mp3|m4a|wav|aac|ogg)$/i.test(f.name)){ alert("這不是音樂檔，請選 mp3、m4a、wav 等音檔"); return; }
+  if(f.size>25*1024*1024){ alert("音檔太大（超過 25MB），請選短一點的"); return; }
+  mtBgmBlob=f; mtBgmName=f.name; renderMeitu();
+};
+window.mtSetBgmVol=function(v){ mtBgmVol=parseFloat(v)||0.5; blessRerender(); };
+window.mtRemoveBgm=function(){ mtBgmBlob=null; mtBgmName=""; renderMeitu(); };
+window.mtSetSelfie=function(on){ mtSelfie=!!on; blessRerender(); };
+window.mtSetMcLen=function(v){ mtMcLen=parseInt(v,10)||0; blessRerender(); };
+window.mtSetSign=function(v){ mtSign=v; var img=document.getElementById("mt-img"); if(img){ try{ img.src=mtDraw(state.lesson,mtState.theme,mtState.content,mtState.shape); }catch(e){} } };
+window.mtSetStkShape=function(s){ mtStickerShape=s; renderMeitu(); };
+function blessRerender(){ var s=document.getElementById("bless-slot"); if(s) s.innerHTML=blessSkeleton(state.lesson?state.lesson.n:0); }
+/* 純音樂卡片：不錄麥克風，只用背景音樂配美圖動畫，直接做成影片 */
+window.mtMusicRec=function(n){
+  if(blessState.mr&&blessState.mr.state==="recording"){ blessStop(); return; }
+  if(!blessSupported()){ blessShowError(n,{name:"Unsupported"}); return; }
+  if(!mtBgmBlob){ alert("請先選一首背景音樂"); return; }
+  blessCleanup();
+  var l=state.lesson; if(!l) return;
+  var dataUrl; try{ dataUrl=mtDraw(l,mtState.theme,mtState.content,mtState.shape); }catch(e){ blessShowError(n,e); return; }
+  var img=new Image();
+  img.onload=function(){
+    try{
+      var W=img.naturalWidth||1080, H=img.naturalHeight||1440;
+      var cv=document.createElement("canvas"); cv.width=W; cv.height=H; var cxt=cv.getContext("2d");
+      blessState.t0=Date.now();
+      function frame(){ cxt.drawImage(img,0,0,W,H);
+        var t=(Date.now()-blessState.t0)/1000;
+        var gx=W*(0.12+0.76*(((t/16)%2>1)?2-(t/16)%2:(t/16)%2));
+        var rg=cxt.createRadialGradient(gx,H*.12,10,gx,H*.12,W*.55);
+        rg.addColorStop(0,"rgba(255,255,255,.10)"); rg.addColorStop(1,"rgba(255,255,255,0)");
+        cxt.fillStyle=rg; cxt.fillRect(0,0,W,H);
+        blessState.raf=requestAnimationFrame(frame);
+      } frame();
+      var ac,bgmEl,bgmURL,audioStream;
+      try{
+        ac=new (window.AudioContext||window.webkitAudioContext)();
+        bgmURL=URL.createObjectURL(mtBgmBlob);
+        bgmEl=new Audio(); bgmEl.src=bgmURL; bgmEl.loop=false; bgmEl.crossOrigin="anonymous";
+        var src=ac.createMediaElementSource(bgmEl); var gain=ac.createGain(); gain.gain.value=1;
+        var dst=ac.createMediaStreamDestination(); src.connect(gain).connect(dst); audioStream=dst.stream;
+        blessState._ac=ac; blessState._bgmEl=bgmEl; blessState._bgmURL=bgmURL; blessState._mcGain=gain;
+      }catch(e){ blessShowError(n,{name:"audio"}); return; }
+      var vstream=cv.captureStream(24); blessState.vstream=vstream;
+      var combined=new MediaStream(vstream.getVideoTracks().concat(audioStream.getAudioTracks()));
+      var mime=blessMime(), mr;
+      try{ mr=mime? new MediaRecorder(combined,{mimeType:mime,videoBitsPerSecond:2500000}) : new MediaRecorder(combined); }catch(e){ mr=new MediaRecorder(combined); }
+      blessState.mr=mr; blessState.chunks=[];
+      mr.ondataavailable=function(e){ if(e.data&&e.data.size) blessState.chunks.push(e.data); };
+      mr.onstop=function(){ var type=(blessState.chunks[0]&&blessState.chunks[0].type)||mime||"video/webm";
+        var blob=new Blob(blessState.chunks,{type:type}); blessCleanupAudio(); blessStopTracks(); blessTimerStop(); blessShow(n,blob); };
+      mr.start(); blessTimerStart();
+      var s=document.getElementById("bless-slot");
+      if(s) s.innerHTML='<div class="bless-sec"><div class="rec-recbar"><span class="rec-dot"></span><span>音樂卡片製作中…♪</span><span id="bless-time">00:00</span></div><button class="rec-btn stop" onclick="blessStop()">■ 停止並完成</button></div>';
+      bgmEl.play().catch(function(){});
+      bgmEl.onended=function(){ if(blessState.mr&&blessState.mr.state==="recording") blessStop(); };
+      var lim=mtMcLen>0?mtMcLen:8*60;
+      if(mtMcLen>0){ setTimeout(function(){ try{ blessState._mcGain&&blessState._mcGain.gain.linearRampToValueAtTime(0,ac.currentTime+1.8); }catch(e){} }, Math.max(0,(lim-2))*1000); }
+      setTimeout(function(){ if(blessState.mr&&blessState.mr.state==="recording") blessStop(); }, lim*1000);
+    }catch(e){ blessShowError(n,e); }
+  };
+  img.onerror=function(){ blessShowError(n,{name:"img"}); };
+  img.src=dataUrl;
 };
 
 applyFont();
